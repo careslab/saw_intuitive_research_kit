@@ -19,6 +19,7 @@ http://www.cisst.org/cisst/license.txt.
 // system include
 #include <iostream>
 #include <time.h>
+#include <fstream>
 
 // cisst
 #include <sawIntuitiveResearchKit/mtsIntuitiveResearchKitSUJ.h>
@@ -936,6 +937,7 @@ void mtsIntuitiveResearchKitSUJ::SetLiftVelocity(const double & velocity)
 
 void mtsIntuitiveResearchKitSUJ::SetBaseFrame(const prmPositionCartesianGet & newBaseFrame)
 {
+	std::ofstream ofs ("/home/dvrk/test.txt", std::ofstream::out);
     mtsIntuitiveResearchKitSUJArmData * arm;
     for (size_t armIndex = 0; armIndex < 4; ++armIndex) {
         arm = Arms[armIndex];
@@ -944,8 +946,16 @@ void mtsIntuitiveResearchKitSUJ::SetBaseFrame(const prmPositionCartesianGet & ne
             base.From(newBaseFrame.Position());
             arm->mBaseFrame = base;
             arm->mBaseFrameValid = newBaseFrame.Valid();
+//            std::cout << "We're here" << newBaseFrame.Valid() << std::endl;
+            std::string whatever = "We were here";
+
+
+              ofs << "inside if";
+
         }
     }
+    ofs << "outside if";
+    ofs.close();
 }
 
 void mtsIntuitiveResearchKitSUJ::MotorDownEventHandler(const prmEventButton & button)

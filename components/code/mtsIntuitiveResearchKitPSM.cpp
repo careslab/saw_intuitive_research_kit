@@ -422,11 +422,11 @@ void mtsIntuitiveResearchKitPSM::SetState(const mtsIntuitiveResearchKitArmTypes:
             // first two rotations
             tolerances.Ref(2, 0).SetAll(20.0 * cmnPI_180);
             // translation
-            tolerances.Element(2) = 20.0 * cmn_mm; // 10 mm
+            tolerances.Element(2) = 30.0 * cmn_mm; // 10 mm
             // shaft rotation
-            tolerances.Element(3) = 120.0 * cmnPI_180;
+            tolerances.Element(3) = 150.0 * cmnPI_180; // 120.0 -> 150.0 Shahab
             // tool orientation
-            tolerances.Ref(4, 3).SetAll(35.0 * cmnPI_180);
+            tolerances.Ref(3, 4).SetAll(50.0 * cmnPI_180); // 35.0 -> 50.0 Shahab
             // gripper
             tolerances.Element(6) = 90.0 * cmnPI_180; // 90 degrees for gripper, until we change the master gripper matches tool angle
             PID.SetTrackingErrorTolerance(tolerances);

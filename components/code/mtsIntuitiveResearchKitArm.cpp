@@ -806,7 +806,8 @@ void mtsIntuitiveResearchKitArm::SetPositionGoalCartesian(const prmPositionCarte
 
 void mtsIntuitiveResearchKitArm::SetBaseFrameEventHandler(const prmPositionCartesianGet & newBaseFrame)
 {
-    if (newBaseFrame.Valid()) {
+	MessageEvents.Status(this->GetName() + " SetBaseFrameEventHandler was called");
+	if (newBaseFrame.Valid()) {
         this->BaseFrame.FromNormalized(newBaseFrame.Position());
         this->BaseFrameValid = true;
     } else {
@@ -816,12 +817,15 @@ void mtsIntuitiveResearchKitArm::SetBaseFrameEventHandler(const prmPositionCarte
 
 void mtsIntuitiveResearchKitArm::SetBaseFrame(const prmPositionCartesianSet & newBaseFrame)
 {
-    if (newBaseFrame.Valid()) {
+//    if (newBaseFrame.Valid()) {
+    	MessageEvents.Status(this->GetName() + " base frame was received");
+    	MessageEvents.Status(this->GetName() + newBaseFrame.Goal().ToString());
         this->BaseFrame.FromNormalized(newBaseFrame.Goal());
         this->BaseFrameValid = true;
-    } else {
-        this->BaseFrameValid = false;
-    }
+//    } else {
+//    	MessageEvents.Status(this->GetName() + "Base frame ain't valid");
+//        this->BaseFrameValid = false;
+//    }
 }
 
 void mtsIntuitiveResearchKitArm::ErrorEventHandler(const std::string & message)

@@ -15,7 +15,18 @@ http://www.cisst.org/cisst/license.txt.
 
 --- end cisst license ---
 */
+#include <string>
+#include <sstream>
 
+namespace patch
+{
+    template < typename T > std::string to_string( const T& n )
+    {
+        std::ostringstream stm ;
+        stm << n ;
+        return stm.str() ;
+    }
+}
 
 // system include
 #include <iostream>
@@ -147,6 +158,7 @@ void mtsTeleOperationPSM::Configure(const std::string & CMN_UNUSED(filename))
     // setup cisst interfaces
     mtsInterfaceRequired * interfaceRequired = AddInterfaceRequired("MTM");
     if (interfaceRequired) {
+    	interfaceRequired->AddFunction("RunWristAdjustment", mMTM->RunWristAdjustment);
         interfaceRequired->AddFunction("GetPositionCartesian", mMTM->GetPositionCartesian);
         interfaceRequired->AddFunction("GetPositionCartesianDesired", mMTM->GetPositionCartesianDesired);
         interfaceRequired->AddFunction("SetPositionCartesian", mMTM->SetPositionCartesian);
@@ -542,6 +554,9 @@ void mtsTeleOperationPSM::EnterEnabled(void)
 
 void mtsTeleOperationPSM::RunEnabled(void)
 {
+//	MessageEvents.Status(this->GetName() + "Running enabled yeah yeah");
+	mMTM->RunWristAdjustment();
+
     if (mMTM->PositionCartesianCurrent.Valid()
         && mPSM->PositionCartesianCurrent.Valid()) {
         // follow mode
@@ -563,6 +578,7 @@ void mtsTeleOperationPSM::RunEnabled(void)
             }
             // rotation
             vctMatRot3 slaveRotation;
+
             if (mRotationLocked) {
                 slaveRotation.From(mPSM->CartesianPrevious.Rotation());
             } else {

@@ -91,6 +91,8 @@ protected:
 
     class RobotMTM {
     public:
+    	mtsFunctionVoid RunWristAdjustment;
+
         mtsFunctionRead  GetPositionCartesian;
         mtsFunctionRead  GetPositionCartesianDesired;
         mtsFunctionWrite SetPositionCartesian;

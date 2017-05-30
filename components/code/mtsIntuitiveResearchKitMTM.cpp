@@ -15,11 +15,23 @@ http://www.cisst.org/cisst/license.txt.
 
 --- end cisst license ---
 */
+#include <string>
+#include <sstream>
 
+namespace patch
+{
+    template < typename T > std::string to_string( const T& n )
+    {
+        std::ostringstream stm ;
+        stm << n ;
+        return stm.str() ;
+    }
+}
 
 // system include
 #include <cmath>
 #include <iostream>
+
 
 // cisst
 #include <cisstNumerical/nmrLSMinNorm.h>
@@ -28,7 +40,11 @@ http://www.cisst.org/cisst/license.txt.
 #include <cisstParameterTypes/prmForceCartesianSet.h>
 #include <sawIntuitiveResearchKit/mtsIntuitiveResearchKitMTM.h>
 
+double THIRD_JOINT_MTML = -cmnPI/2.0;
+double THIRD_JOINT_MTMR = cmnPI/2.0;
+
 CMN_IMPLEMENT_SERVICES_DERIVED_ONEARG(mtsIntuitiveResearchKitMTM, mtsTaskPeriodic, mtsTaskPeriodicConstructorArg);
+
 
 mtsIntuitiveResearchKitMTM::mtsIntuitiveResearchKitMTM(const std::string & componentName, const double periodInSeconds):
     mtsIntuitiveResearchKitArm(componentName, periodInSeconds)
@@ -112,6 +128,7 @@ void mtsIntuitiveResearchKitMTM::Init(void)
     CMN_ASSERT(RobotInterface);
     RobotInterface->AddCommandWrite(&mtsIntuitiveResearchKitMTM::LockOrientation, this, "LockOrientation");
     RobotInterface->AddCommandVoid(&mtsIntuitiveResearchKitMTM::UnlockOrientation, this, "UnlockOrientation");
+    RobotInterface->AddCommandVoid(&mtsIntuitiveResearchKitMTM::RunWristAdjustment, this, "RunWristAdjustment");
 
     // Gripper
     RobotInterface->AddCommandReadState(this->StateTable, GripperPosition, "GetGripperPosition");
@@ -121,7 +138,12 @@ void mtsIntuitiveResearchKitMTM::Init(void)
 
 void mtsIntuitiveResearchKitMTM::RunArmSpecific(void)
 {
+	MessageEvents.Status(this->GetName() + "Robot State is :) :) :) : " + patch::to_string( RobotState));
+
     switch (RobotState) {
+    case mtsIntuitiveResearchKitArmTypes::DVRK_EFFORT_CARTESIAN:
+		RunWristAdjustment();
+		break;
     case mtsIntuitiveResearchKitArmTypes::DVRK_HOMING_CALIBRATING_ROLL:
         RunHomingCalibrateRoll();
         break;
@@ -230,6 +252,7 @@ void mtsIntuitiveResearchKitMTM::SetState(const mtsIntuitiveResearchKitArmTypes:
     case mtsIntuitiveResearchKitArmTypes::DVRK_HOMING_CALIBRATING_ARM:
         HomingCalibrateArmStarted = false;
         RobotState = newState;
+
         this->MessageEvents.Status(this->GetName() + " calibrating arm");
         break;
 
@@ -345,6 +368,58 @@ void mtsIntuitiveResearchKitMTM::SetState(const mtsIntuitiveResearchKitArmTypes:
     MessageEvents.RobotState(mtsIntuitiveResearchKitArmTypes::RobotStateTypeToString(this->RobotState));
 }
 
+void mtsIntuitiveResearchKitMTM::RunWristAdjustment(void){
+
+	vctDoubleVec torqueDesired(8, 0.0);
+	torqueDesired[0]=0.0;
+	torqueDesired[1]=0.0;
+	torqueDesired[2]=0.0;
+	torqueDesired[3]=0.0;
+	torqueDesired[4]=0.0;
+	torqueDesired[5]=0.0;
+	torqueDesired[6]=0.0;
+
+	double CENTER_VALUE = THIRD_JOINT_MTML;
+	if (RobotType == MTM_RIGHT)
+		CENTER_VALUE = THIRD_JOINT_MTMR;
+
+//	CENTER_VALUE = 0.0;
+	int JOINT_NUMBER  = 3;
+	// For J7 (wrist roll) to -1.5 PI to 1.5 PI
+	double gain = 1.0;
+	if (JointGet[JOINT_NUMBER] > ( CENTER_VALUE *.9 )) {
+		torqueDesired[JOINT_NUMBER] = (  (CENTER_VALUE) - JointGet[JOINT_NUMBER]) * gain;
+	}
+	else if (JointGet[JOINT_NUMBER] < CENTER_VALUE * 1.1) {
+		torqueDesired[JOINT_NUMBER] = ( (CENTER_VALUE) - JointGet[JOINT_NUMBER]) * gain;
+	}
+
+	JOINT_NUMBER  = 6;
+		// For J7 (wrist roll) to -1.5 PI to 1.5 PI
+	gain = 6.0;
+	if (JointGet[JOINT_NUMBER] > ( cmnPI/2.0 )) {
+		torqueDesired[JOINT_NUMBER] = (  (cmnPI/2.0) - JointGet[JOINT_NUMBER]) * gain;
+	}
+	else if (JointGet[JOINT_NUMBER] < -cmnPI/2.0) {
+		torqueDesired[JOINT_NUMBER] = ( (-cmnPI/2.0) - JointGet[JOINT_NUMBER]) * gain;
+	}
+
+	// add the external efforts
+	size_t N = torqueDesired.size();
+	if( JointExternalEffort.size() < N ) { N = JointExternalEffort.size(); }
+	for( size_t i=0; i<N; i++ ) { torqueDesired[i] += JointExternalEffort[i]; }
+
+	TorqueSetParam.SetForceTorque(torqueDesired);
+	PID.SetTorqueJoint(TorqueSetParam);
+
+//	JointSet = JointGet;
+//	JointSet[3] = CENTER_VALUE;
+//	SetPositionJointLocal(JointSet);
+
+	MessageEvents.Status(this->GetName() + " RunWristAdjustment");
+
+}
+
 void mtsIntuitiveResearchKitMTM::RunHomingCalibrateArm(void)
 {
     if (mIsSimulated) {
@@ -354,18 +429,26 @@ void mtsIntuitiveResearchKitMTM::RunHomingCalibrateArm(void)
 
     static const double extraTime = 2.0 * cmn_s;
     const double currentTime = this->StateTable.GetTic();
-
+//    JointSet[3] = cmnPI/2.0;
     // trigger motion
     if (!HomingCalibrateArmStarted) {
         // disable joint limits
         PID.SetCheckJointLimit(false);
         // enable PID and start from current position
         JointSet.ForceAssign(JointGet);
+
+//        JointSet[3] = cmnPI/2.0;
+        MessageEvents.Warning(this->GetName() + " Running stuff.");
+
         SetPositionJointLocal(JointSet);
         PID.Enable(true);
 
         // compute joint goal position
         JointTrajectory.Goal.SetAll(0.0);
+        if ( RobotType == MTM_LEFT)
+        	JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTML;
+        else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTMR;
         // last joint is calibrated later
         if (!HomedOnce) {
             JointTrajectory.Goal.Element(JNT_WRIST_ROLL) = JointGet.Element(JNT_WRIST_ROLL);
@@ -426,8 +509,20 @@ void mtsIntuitiveResearchKitMTM::RunHomingCalibrateRoll(void)
         // compute joint goal position, we assume PID is on from previous state
         const double currentRoll = JointGet.Element(JNT_WRIST_ROLL);
         JointTrajectory.Start.SetAll(0.0);
+
+        if ( RobotType == MTM_LEFT)
+        	JointTrajectory.Start.Element(3) = THIRD_JOINT_MTML;
+		else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Start.Element(3) = THIRD_JOINT_MTMR;
+
         JointTrajectory.Start.Element(JNT_WRIST_ROLL) = currentRoll;
         JointTrajectory.Goal.SetAll(0.0);
+
+        if ( RobotType == MTM_LEFT)
+        	JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTML;
+		else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTMR;
+
         JointTrajectory.Goal.Element(JNT_WRIST_ROLL) = currentRoll - maxRollRange;
         JointTrajectory.LSPB.Set(JointTrajectory.Start, JointTrajectory.Goal,
                                  JointTrajectory.Velocity, JointTrajectory.Acceleration,
@@ -464,8 +559,19 @@ void mtsIntuitiveResearchKitMTM::RunHomingCalibrateRoll(void)
         // compute joint goal position, we assume PID is on from previous state
         const double currentRoll = JointGet.Element(JNT_WRIST_ROLL);
         JointTrajectory.Start.SetAll(0.0);
+        if (RobotType == MTM_LEFT)
+			JointTrajectory.Start.Element(3) = THIRD_JOINT_MTML;
+		else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Start.Element(3) = THIRD_JOINT_MTMR;
+
         JointTrajectory.Start.Element(JNT_WRIST_ROLL) = currentRoll;
         JointTrajectory.Goal.SetAll(0.0);
+
+        if ( RobotType == MTM_LEFT)
+			JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTML;
+		else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTMR;
+
         JointTrajectory.Goal.Element(JNT_WRIST_ROLL) = currentRoll + maxRollRange;
         JointTrajectory.LSPB.Set(JointTrajectory.Start, JointTrajectory.Goal,
                                  JointTrajectory.Velocity, JointTrajectory.Acceleration,
@@ -501,8 +607,20 @@ void mtsIntuitiveResearchKitMTM::RunHomingCalibrateRoll(void)
     if (!HomingCalibrateRollSeekCenter) {
         // compute joint goal position, we assume PID is on from previous state
         JointTrajectory.Start.SetAll(0.0);
+
+        if ( RobotType == MTM_LEFT)
+			JointTrajectory.Start.Element(3) = THIRD_JOINT_MTML;
+		else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Start.Element(3) = THIRD_JOINT_MTMR;
+
         JointTrajectory.Start.Element(JNT_WRIST_ROLL) = JointGet.Element(JNT_WRIST_ROLL);
         JointTrajectory.Goal.SetAll(0.0);
+
+        if ( RobotType == MTM_LEFT)
+			JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTML;
+		else if (RobotType == MTM_RIGHT)
+			JointTrajectory.Goal.Element(3) = THIRD_JOINT_MTMR;
+
         JointTrajectory.Goal.Element(JNT_WRIST_ROLL) = HomingCalibrateRollLower + 480.0 * cmnPI_180;
         JointTrajectory.LSPB.Set(JointTrajectory.Start, JointTrajectory.Goal,
                                  JointTrajectory.Velocity, JointTrajectory.Acceleration,
@@ -529,6 +647,11 @@ void mtsIntuitiveResearchKitMTM::RunHomingCalibrateRoll(void)
             // reset encoder on last joint as well as PID target position to reflect new roll position = 0
             RobotIO.ResetSingleEncoder(static_cast<int>(JNT_WRIST_ROLL));
             JointSet.SetAll(0.0);
+            if ( RobotType == MTM_LEFT)
+				JointSet[3] = THIRD_JOINT_MTML;
+			else if (RobotType == MTM_RIGHT)
+				JointSet[3] = THIRD_JOINT_MTMR;
+
             SetPositionJointLocal(JointSet);
             PID.SetCheckJointLimit(true);
             MessageEvents.Status(this->GetName() + " roll calibrated");
@@ -544,10 +667,12 @@ void mtsIntuitiveResearchKitMTM::RunHomingCalibrateRoll(void)
             }
         }
     }
+
 }
 
 void mtsIntuitiveResearchKitMTM::RunGravityCompensation(void)
 {
+	MessageEvents.Status(this->GetName() + " Gravity Compensation Activated");
     vctDoubleVec q(7, 0.0);
     vctDoubleVec qd(7, 0.0);
     vctDoubleVec tau(7, 0.0);
@@ -570,6 +695,12 @@ void mtsIntuitiveResearchKitMTM::RunGravityCompensation(void)
     } else if (JointGet[JNT_WRIST_ROLL] < -1.5 * cmnPI) {
         torqueDesired[JNT_WRIST_ROLL] = (-1.5 * cmnPI - JointGet[JNT_WRIST_ROLL]) * gain;
     }
+
+//	if (JointGet[3] > 2*cmnPI/3.0) {
+//		torqueDesired[JNT_WRIST_ROLL] = (cmnPI/2.0 - JointGet[JNT_WRIST_ROLL]) * gain;
+//	} else if (JointGet[JNT_WRIST_ROLL] < 2*cmnPI/3.0) {
+//		torqueDesired[JNT_WRIST_ROLL] = (cmnPI/2.0 - JointGet[JNT_WRIST_ROLL]) * gain;
+//	}
 
     // add the external efforts
     size_t N = torqueDesired.size();

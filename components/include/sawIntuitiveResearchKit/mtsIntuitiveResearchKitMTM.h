@@ -45,6 +45,9 @@ public:
     void SetMTMType(const bool autodetect = true, const MTM_TYPE type = MTM_NULL);
     void Configure(const std::string & filename);
 
+    /*! Adjust the third joint of the wrist during teleoperation */
+    void RunWristAdjustment(void);
+
 protected:
     enum JointName {
         JNT_OUTER_YAW = 0,
@@ -94,6 +97,7 @@ protected:
 
     /*! Switch case for user mode. */
     void RunArmSpecific(void);
+
 
     /*! Homing procedure, home all joints except last one using potentiometers as reference. */
     void RunHomingCalibrateArm(void);
