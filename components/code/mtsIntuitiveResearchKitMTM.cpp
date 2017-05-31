@@ -138,12 +138,7 @@ void mtsIntuitiveResearchKitMTM::Init(void)
 
 void mtsIntuitiveResearchKitMTM::RunArmSpecific(void)
 {
-	MessageEvents.Status(this->GetName() + "Robot State is :) :) :) : " + patch::to_string( RobotState));
-
     switch (RobotState) {
-    case mtsIntuitiveResearchKitArmTypes::DVRK_EFFORT_CARTESIAN:
-		RunWristAdjustment();
-		break;
     case mtsIntuitiveResearchKitArmTypes::DVRK_HOMING_CALIBRATING_ROLL:
         RunHomingCalibrateRoll();
         break;
@@ -394,16 +389,22 @@ void mtsIntuitiveResearchKitMTM::RunWristAdjustment(void){
 		torqueDesired[JOINT_NUMBER] = ( (CENTER_VALUE) - JointGet[JOINT_NUMBER]) * gain;
 	}
 
-	JOINT_NUMBER  = 6;
-		// For J7 (wrist roll) to -1.5 PI to 1.5 PI
-	gain = 6.0;
-	if (JointGet[JOINT_NUMBER] > ( cmnPI/2.0 )) {
-		torqueDesired[JOINT_NUMBER] = (  (cmnPI/2.0) - JointGet[JOINT_NUMBER]) * gain;
-	}
-	else if (JointGet[JOINT_NUMBER] < -cmnPI/2.0) {
-		torqueDesired[JOINT_NUMBER] = ( (-cmnPI/2.0) - JointGet[JOINT_NUMBER]) * gain;
-	}
+	vctDoubleVec mtm_limits(7, cmnPI/2.0);
+	mtm_limits[4] = cmnPI/4.0;
+//	mtm_limits.ref(7,0).Assign(cmnPI/2.0);
 
+	for (JOINT_NUMBER=0; JOINT_NUMBER<=6; JOINT_NUMBER++){
+		if (JOINT_NUMBER == 3)
+			continue;
+		// For J7 (wrist roll) to -1.5 PI to 1.5 PI
+		gain = 6.0;
+		if (JointGet[JOINT_NUMBER] > ( mtm_limits[JOINT_NUMBER] )) {
+			torqueDesired[JOINT_NUMBER] = (  mtm_limits[JOINT_NUMBER] - JointGet[JOINT_NUMBER]) * gain;
+		}
+		else if (JointGet[JOINT_NUMBER] < -mtm_limits[JOINT_NUMBER]) {
+			torqueDesired[JOINT_NUMBER] = ( (-mtm_limits[JOINT_NUMBER]) - JointGet[JOINT_NUMBER]) * gain;
+		}
+	}
 	// add the external efforts
 	size_t N = torqueDesired.size();
 	if( JointExternalEffort.size() < N ) { N = JointExternalEffort.size(); }
@@ -416,7 +417,7 @@ void mtsIntuitiveResearchKitMTM::RunWristAdjustment(void){
 //	JointSet[3] = CENTER_VALUE;
 //	SetPositionJointLocal(JointSet);
 
-	MessageEvents.Status(this->GetName() + " RunWristAdjustment");
+//	MessageEvents.Status(this->GetName() + " RunWristAdjustment");
 
 }
 

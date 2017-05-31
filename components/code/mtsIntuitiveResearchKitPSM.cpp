@@ -439,6 +439,10 @@ void mtsIntuitiveResearchKitPSM::SetState(const mtsIntuitiveResearchKitArmTypes:
         }
         RobotState = newState;
         MessageEvents.Status(this->GetName() + " ready");
+
+        // Shahab was here
+        PID.EnableTrackingError(false);
+        MessageEvents.Status(this->GetName() + " tracking error disabled");
         break;
 
     case mtsIntuitiveResearchKitArmTypes::DVRK_POSITION_JOINT:
