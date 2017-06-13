@@ -390,8 +390,7 @@ void mtsIntuitiveResearchKitMTM::RunWristAdjustment(void){
 	}
 
 	vctDoubleVec mtm_limits(7, cmnPI/2.0);
-	mtm_limits[4] = cmnPI/4.0;
-//	mtm_limits.ref(7,0).Assign(cmnPI/2.0);
+//	mtm_limits[4] = cmnPI/4.0;
 
 	for (JOINT_NUMBER=0; JOINT_NUMBER<=6; JOINT_NUMBER++){
 		if (JOINT_NUMBER == 3)
