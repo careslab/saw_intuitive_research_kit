@@ -288,8 +288,8 @@ void mtsIntuitiveResearchKitECM::RunHomingCalibrateArm(void)
         SetPositionJointLocal(JointSet);
         // configure PID to fail in case of tracking error
         vctDoubleVec tolerances(NumberOfJoints());
-        tolerances.SetAll(7.0 * cmnPI_180); // 7 degrees on angles
-        tolerances.Element(2) = 20.0 * cmn_mm; // 10 mm
+        tolerances.SetAll(10.0 * cmnPI_180); // 7 degrees on angles
+        tolerances.Element(2) = 30.0 * cmn_mm; // 10 mm
         PID.SetTrackingErrorTolerance(tolerances);
         PID.EnableTrackingError(true);
         // finally enable PID

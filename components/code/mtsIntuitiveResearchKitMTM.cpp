@@ -130,6 +130,7 @@ void mtsIntuitiveResearchKitMTM::Init(void)
     RobotInterface->AddCommandVoid(&mtsIntuitiveResearchKitMTM::UnlockOrientation, this, "UnlockOrientation");
     RobotInterface->AddCommandVoid(&mtsIntuitiveResearchKitMTM::RunWristAdjustment, this, "RunWristAdjustment");
 
+
     // Gripper
     RobotInterface->AddCommandReadState(this->StateTable, GripperPosition, "GetGripperPosition");
     RobotInterface->AddEventVoid(GripperEvents.GripperPinch, "GripperPinchEvent");
@@ -365,6 +366,7 @@ void mtsIntuitiveResearchKitMTM::SetState(const mtsIntuitiveResearchKitArmTypes:
 
 void mtsIntuitiveResearchKitMTM::RunWristAdjustment(void){
 
+//	MessageEvents.Status(this->GetName() + " Running wrist adjustment yo");
 	vctDoubleVec torqueDesired(8, 0.0);
 	torqueDesired[0]=0.0;
 	torqueDesired[1]=0.0;
@@ -390,13 +392,13 @@ void mtsIntuitiveResearchKitMTM::RunWristAdjustment(void){
 	}
 
 	vctDoubleVec mtm_limits(7, cmnPI/2.0);
-//	mtm_limits[4] = cmnPI/4.0;
+	mtm_limits[4] = cmnPI/4.0;
 
 	for (JOINT_NUMBER=0; JOINT_NUMBER<=6; JOINT_NUMBER++){
 		if (JOINT_NUMBER == 3)
 			continue;
 		// For J7 (wrist roll) to -1.5 PI to 1.5 PI
-		gain = 6.0;
+		gain = 10.0;
 		if (JointGet[JOINT_NUMBER] > ( mtm_limits[JOINT_NUMBER] )) {
 			torqueDesired[JOINT_NUMBER] = (  mtm_limits[JOINT_NUMBER] - JointGet[JOINT_NUMBER]) * gain;
 		}

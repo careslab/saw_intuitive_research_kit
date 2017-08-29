@@ -557,7 +557,7 @@ void mtsTeleOperationPSM::RunEnabled(void)
 //	MessageEvents.Status(this->GetName() + "Running enabled yeah yeah");
 	mMTM->RunWristAdjustment();
 
-    if (mMTM->PositionCartesianCurrent.Valid()
+	if (mMTM->PositionCartesianCurrent.Valid()
         && mPSM->PositionCartesianCurrent.Valid()) {
         // follow mode
         if (!mIsClutched) {

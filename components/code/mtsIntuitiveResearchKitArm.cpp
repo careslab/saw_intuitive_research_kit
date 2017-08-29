@@ -187,6 +187,7 @@ void mtsIntuitiveResearchKitArm::Init(void)
         // Set
         RobotInterface->AddCommandVoid(&mtsIntuitiveResearchKitArm::Freeze,
                                        this, "Freeze");
+
         RobotInterface->AddCommandWrite(&mtsIntuitiveResearchKitArm::SetBaseFrame,
                                         this, "SetBaseFrame");
         RobotInterface->AddCommandWrite(&mtsIntuitiveResearchKitArm::SetPositionJoint,

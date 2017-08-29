@@ -53,19 +53,38 @@ void mtsIntuitiveResearchKitPSM::SetSimulated(void)
 robManipulator::Errno mtsIntuitiveResearchKitPSM::InverseKinematics(vctDoubleVec & jointSet,
                                                                     const vctFrm4x4 & cartesianGoal)
 {
+	jointSet[3] = 0.0;
+	jointSet[4] = 0.0;
+	jointSet[5] = 0.0;
     if (Manipulator.InverseKinematics(jointSet, cartesianGoal) == robManipulator::ESUCCESS) {
         // find closest solution mod 2 pi
-        const double difference = JointGet[3] - jointSet[3];
-        const double differenceInTurns = nearbyint(difference / (2.0 * cmnPI));
+        double difference = JointGet[3] - jointSet[3];
+        double differenceInTurns = nearbyint(difference / (2.0 * cmnPI));
         jointSet[3] = jointSet[3] + differenceInTurns * 2.0 * cmnPI;
-        // make sure we are away from RCM point, this test is
-        // simplistic and might not work with all tools
+
+//        if (difference > (cmnPI/10.0)) return robManipulator::EFAILURE;
+        if (difference > (cmnPI/10.0)){
+        	jointSet[3] = JointGet[3];// + (difference/abs(difference)) * (cmnPI/10.0);
+        }
+
+        difference = JointGet[4] - jointSet[4];
+		if (difference > (cmnPI/10.0)){
+			jointSet[4] = JointGet[4] + (difference/abs(difference)) * (cmnPI/20.0);
+		}
+
+		difference = JointGet[5] - jointSet[5];
+		if (difference > (cmnPI/10.0)){
+			jointSet[5] = JointGet[5] + (difference/abs(difference)) * (cmnPI/20.0);
+		}
+
+//         make sure we are away from RCM point, this test is
+//         simplistic and might not work with all tools
         if (jointSet[2] < 40.0 * cmn_mm) {
             jointSet[2] = 40.0 * cmn_mm;
         }
         return robManipulator::ESUCCESS;
     }
-    return robManipulator::EFAILURE;
+    return robManipulator::ESUCCESS;
 }
 
 void mtsIntuitiveResearchKitPSM::Init(void)
